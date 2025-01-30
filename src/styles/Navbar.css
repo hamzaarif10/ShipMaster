@@ -1,0 +1,79 @@
+/* Navbar styles */
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background-color: rgb(16, 7, 70);
+    border-bottom: 1px solid #e6e6e6;
+    font-family: Arial, sans-serif;
+    height: 100px;
+  }
+  
+  .navbar-logo {
+    display: flex;
+    align-items: center;
+}
+  
+  .logo {
+    height: 80px;
+    width: 320px; /* Or any size that fits your design */
+    
+    object-fit: contain; /* Ensures proper scaling */
+}
+
+  
+  .brand-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #532e8c; /* Adjust brand color */
+  }
+  
+  .navbar-links {
+    display: flex;
+    list-style: none;
+    gap: 20px;
+  }
+  
+  .navbar-links li {
+    color: #cf6d11; /* Adjust link color */
+    cursor: pointer;
+    font-weight: 500;
+  }
+  
+  .dropdown-icon {
+    font-size: 0.8rem;
+    margin-left: 4px;
+  }
+  
+  .navbar-buttons {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .sign-up {
+    background-color: #edad0a; /* Adjust button color */
+    border: 1px solid #532e8c;
+    border-radius: 5px;
+    padding: 10px 15px;
+    color: #532e8c;
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 10px;
+  }
+  
+  .login {
+    border: 1px solid #532e8c;
+    background-color: #07efd0;
+    border-radius: 5px;
+    padding: 5px 20px;
+    color: #532e8c;
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 30px;
+  }
+  
+  .sign-up:hover, .login:hover {
+    opacity: 0.8;
+  }
+  

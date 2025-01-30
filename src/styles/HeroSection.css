@@ -1,0 +1,75 @@
+/* Hero Section Styling */
+.hero-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60vh;
+  background: linear-gradient(to bottom right, #00b5e2, #007f7f); /* Cyan-blue gradient */
+  text-align: center;
+  padding: 0 20px;
+  color: white;
+  overflow: hidden;
+}
+
+.hero-content {
+  max-width: 800px;
+  animation: fadeIn 1.5s ease-out;
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  animation: slideInFromTop 1.5s ease-out;
+}
+
+.highlight-text {
+  color: lightgreen;
+  font-weight: bold;
+}
+
+.hero-description {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+  animation: fadeIn 2s ease-out;
+}
+
+.cta-button {
+  background-color: #ff9f00;
+  color: white;
+  padding: 15px 30px;
+  font-size: 1.2rem;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  animation: fadeIn 2.5s ease-out;
+}
+
+.cta-button:hover {
+  transform: scale(1.05);
+  background-color: #f57c00;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromTop {
+  0% {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+  

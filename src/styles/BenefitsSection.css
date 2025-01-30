@@ -1,0 +1,38 @@
+.benefits-section {
+    padding: 50px 0;
+    background-color: #e2e7f0;
+    text-align: center;
+  }
+  
+  .section-title {
+    font-size: 2.5rem;
+    color: #f79308;
+    margin-bottom: 40px;
+  }
+  
+  .benefit-list {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+  }
+  
+  .benefit-item {
+    background-color: white;
+    padding: 20px;
+    margin: 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 350px;
+    text-align: center;
+  }
+  
+  .benefit-item h3 {
+    font-size: 1.5rem;
+    color: #007acc;
+  }
+  
+  .benefit-item p {
+    font-size: 1rem;
+    color: #666;
+  }
+  
