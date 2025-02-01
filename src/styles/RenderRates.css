@@ -107,17 +107,51 @@
     position: relative; /* Ensures it's positioned correctly in the form */
 }
 .submit-button {
-  background-color: #4CAF50;
+  width: 100%;
+  padding: 10px;
+  background-color: #ff610c;
   color: white;
+  font-size: 1rem;
   border: none;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
   border-radius: 5px;
+  cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
 .submit-button:disabled {
-  background-color: #ccc;
+  background-color: #dcdcdc;
   cursor: not-allowed;
+}
+/* Container for the updated price */
+.updated-price-container {
+  display: flex;
+  justify-content: flex-end; /* Align content to the right */
+  align-items: center;  /* Vertically center the price and image */
+  padding: 10px 20px;  /* Add some padding for spacing */
+  background-color: #f9f9f9;  /* Light background color for the container */
+  border-radius: 8px; /* Rounded corners for a smoother look */
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);  /* Subtle shadow for a card effect */
+}
+
+.updated-price {
+  font-size: 1.5rem;  /* Adjust the font size for the price */
+  margin: 0;  /* Remove default margin */
+  color: #333;  /* Darker color for text */
+}
+
+.price-value {
+  display: flex;
+  align-items: center; /* Ensure the image and price align in the middle */
+  margin-left: 10px;  /* Space between the price and logo */
+}
+/* Optional hover effect for updated price container */
+.updated-price-container:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);  /* Slightly larger shadow on hover */
+  background-color: #e6e6e6; /* Lighten the background color on hover */
+}
+
+/* Optional styling for the price value */
+.price-value span {
+  font-weight: bold;  /* Make the price text bold */
+  font-size: 1.2rem;  /* Slightly larger price */
 }

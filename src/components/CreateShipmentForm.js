@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import "../styles/RenderRates.css";
 import axios from 'axios';
 import ShipmentDetailsModal from '../modals/ShipmentDetailsModal';
 import UserAddressModal from '../modals/UserAddressModal';
 import AddPaymentMethodModal from '../modals/AddPaymentMethodModal';
-import { getEasyshipCreateShipmentData } from '../data/easyshipData';
+import { getEasyshipCreateShipmentData, getEasyshipRateEstimateData } from '../data/easyshipData';
 import { getGlsCreateShipmentData } from '../data/glsData';
 import { canadianProvinces, usStates, ukCountries, australianStates, newZealandRegions, germanStates, frenchRegions, 
   italianRegions, spanishAutonomousCommunities, swedishCounties, norwegianCounties,  
   danishRegions, finnishRegions, swissCantons, japanesePrefectures, singaporeRegions} from '../data/locationData';
-import { Button, useDisclosure } from '@chakra-ui/react'; 
+import { Button, useDisclosure, Spinner } from '@chakra-ui/react'; 
 import loadGoogleMapsAPI from "../functions/loadGoogleMapsApi";
 import initAutocomplete from "../functions/initAutoComplete";
+import { fetchFinalPrice } from '../functions/fetchFinalEasyShipPrice';
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 
-function CreateShipmentForm({courierId, courierUrl, courierCost, receiverCountry, receiverPostCode, measurements, mass}) {
+function CreateShipmentForm({courierId, courierUrl, courierCost, senderCountry, receiverCountry, receiverPostCode, measurements, mass}) {
   const [senderAddressLine1, setSenderAddressLine1] = useState("");
   const [senderProvince, setSenderProvince] = useState("");
   const [senderCity, setSenderCity] = useState("");
@@ -37,12 +38,16 @@ function CreateShipmentForm({courierId, courierUrl, courierCost, receiverCountry
 
   const [pdfLink, setPdfLink] = useState(null);
   const [shipmentDetails, setShipmentDetails] = useState(null);
+  const [priceDetails, setPriceDetails] = useState(null);
 
   const [userAddressDetails, setUserAddressDetails] = useState(null);
   
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [modalType, setModalType] = useState(null); // To track which modal to open
   const [isLoading, setIsLoading] = useState(false);
+  const [isProceedButtonVisible, setIsProceedButtonVisible] = useState(true);
+  const [isCreateShipmentButtonVisible, setIsCreateShipmentButtonVisible] = useState(false);
+
 
   // Load Stripe with your publishable key
    const stripePromise = loadStripe("pk_test_51QkCtpDHC1AwffPccIdFZDypLEY0aKWdk6af4qDDlwKALLJIVDuqeUcsXY2LHK5yrUPqu8tfFQPbB3YcRSsq6ONM00t568wLim");
@@ -188,10 +193,6 @@ async function submitLabel() {
     alert("Failed to submit label.");
   }
 }
-
-useEffect(() => {
-    fetchUserAddress();
-}, [userAddressDetails]); // List the dependencies that trigger fetching address when they change.
   
 async function generatePdfLink(base64String, tracking, isEasyShipLabel) {
   try {
@@ -243,11 +244,44 @@ async function uploadFileToStorage(file) {
     throw new Error("File upload failed");
   }
 }
+//USE EFFECT HOOKS
 useEffect(() => {
   if (shipmentDetails) {
     submitLabel();
   }
 }, [shipmentDetails]);
+
+useEffect(() => {
+  fetchUserAddress();
+}, [userAddressDetails]); // List the dependencies that trigger fetching address when they change.
+
+useEffect(() => {
+  if (receiverAddressLine1 && receiverCity && receiverProvince && receiverPostalCode 
+    && receiverContactName && receiverPhone && receiverEmail && dimensions && weight) {
+      setIsCreateShipmentButtonVisible(false);
+      setIsProceedButtonVisible(true);
+    }
+}, [senderAddressLine1, senderCity, senderProvince, senderPostalCode, 
+  receiverAddressLine1, receiverCity, receiverProvince, receiverPostalCode, 
+  dimensions, weight])
+
+//Function TO FETCH THE LATEST RATE BEFORE CREATING SHIPMENT
+const getNewRate = async (e) => {
+  e.preventDefault();
+  if (receiverAddressLine1 && receiverCity && receiverProvince && receiverPostalCode 
+    && receiverContactName && receiverPhone && receiverEmail && dimensions && weight) {
+      setIsProceedButtonVisible(false);
+      setIsCreateShipmentButtonVisible(true);
+      setIsLoading(true);
+      const easyShipRateEstimateData = getEasyshipRateEstimateData({
+        senderProvince, senderPostalCode, senderCountry,
+        receiverProvince, receiverPostalCode, receiverCountry,
+        dimensions, weight
+      });
+      fetchFinalPrice(courierId, easyShipRateEstimateData, setPriceDetails, setIsLoading);
+  }
+}
+
 
 const handleSubmit = async (e) => {
   e.preventDefault();
@@ -497,9 +531,34 @@ const handleSubmit = async (e) => {
                             onChange={(e) => setDimensions({ ...dimensions, depth: parseFloat(e.target.value) || 0 })}/>
                     </div>
                 </div>
-                <button type="submit" disabled={isLoading} className="submit-button">
-                      {isLoading ? "Processing..." : "Create Shipment"}
-                    </button>
+                {/* proceed button once all fields are filled out */}
+                {isProceedButtonVisible && (
+                  <button type="button" onClick={getNewRate} className="submit-button">
+                  Proceed
+                 </button>
+                )}
+                {isLoading && (
+                    <div className="spinner-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50px' }}>
+                        <Spinner size="xl" color="blue.500" />
+                    </div>
+                )}
+                {/* Render New updated price once all fields are set */}
+                {priceDetails && isCreateShipmentButtonVisible && !isLoading &&(
+                  <div>
+                    <div className="updated-price-container">
+                      <h3 className="updated-price">
+                        <span className="price-value">
+                          <img src={priceDetails.newLogo} alt="Logo" className="gls-logo" />
+                          ${priceDetails.newPrice}
+                        </span>
+                      </h3>
+                    </div>
+                    <button type="submit" disabled={isLoading} className="submit-button">
+                    {isLoading ? "Processing..." : "Create Shipment"}
+                  </button>
+  
+                  </div>
+                  )}
             </form>
             {/* Render ShipmentDetailsModal only if pdfLink and shipmentDetails are set */}
         {shipmentDetails && modalType === 'shipmentDetails' &&(

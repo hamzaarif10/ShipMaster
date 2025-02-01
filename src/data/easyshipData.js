@@ -85,4 +85,63 @@ export const getEasyshipCreateShipmentData = ({
       },
     ],
   });
+  export const getEasyshipRateEstimateData = ({
+    senderProvince,
+    senderPostalCode,
+    senderCountry,
+    receiverProvince,
+    receiverPostalCode,
+    receiverCountry,
+    dimensions,
+    weight
+  }) => ({
+    origin_address: {
+      state: senderProvince,
+      city: "new",
+      postal_code: senderPostalCode,
+      country_alpha2: senderCountry
+    },
+    destination_address: {
+      country_alpha2: receiverCountry,
+      line_1: "new",
+      state: receiverProvince,
+      city: "new",
+      postal_code: receiverPostalCode
+    },
+    incoterms: "DDU",
+    courier_settings: {
+      show_courier_logo_url: true
+    },
+    shipping_settings: {
+      units: {
+        weight: "kg",
+        dimensions: "cm"
+      },
+      output_currency: "CAD"
+    },
+    parcels: [
+      {
+        box: {
+          slug: null,
+          length: dimensions.length,
+          width: dimensions.width,
+          height: dimensions.depth
+        },
+        items: [
+          {
+            contains_battery_pi966: false,
+            contains_battery_pi967: false,
+            contains_liquids: false,
+            origin_country_alpha2: "CA",
+            quantity: 1,
+            declared_currency: "CAD",
+            actual_weight: weight,
+            declared_customs_value: 0.1,
+            hs_code: "85171400"
+          }
+        ],
+        total_actual_weight: weight
+      }
+    ]
+  });
   

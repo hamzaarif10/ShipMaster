@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import '../styles/RenderRates.css';
 import CreateShipmentForm from './CreateShipmentForm';
 
-function GetRates({ receiverCountryCode, receiverPostalCode, dimensions, weight, glsRate, rate1, rate2, rate3, rate4, rate5, url1, url2, url3, url4, url5, courier1, courier2, courier3, courier4, courier5}) {
+function GetRates({ senderCountryCode, receiverCountryCode, receiverPostalCode, dimensions, weight, glsRate, rate1, rate2, rate3, rate4, rate5, url1, url2, url3, url4, url5, courier1, courier2, courier3, courier4, courier5}) {
   const [selectedCourier, setSelectedCourier] = useState(null);
   const [selectedCourierUrl, setSelectedCourierUrl] = useState(null);
   const [selectedCourierCost, setSelectedCourierCost] = useState(null);
@@ -43,6 +43,7 @@ function GetRates({ receiverCountryCode, receiverPostalCode, dimensions, weight,
           courierId={selectedCourier}
           courierUrl={selectedCourierUrl}
           courierCost={selectedCourierCost.toFixed(2)}
+          senderCountry={senderCountryCode}
           receiverCountry={receiverCountryCode}
           receiverPostCode={receiverPostalCode}
           measurements={dimensions}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import GetRates from './GetRates';
 import axios from 'axios';
+import { calculateRateWithMargin } from '../functions/calculateRate';
 
 function RateEstimate({
   senderPostalCode,
@@ -93,12 +94,6 @@ function RateEstimate({
       
         const sortedRates = filteredRates.sort((a, b) => a.cost_rank - b.cost_rank);
       
-        const calculateRateWithMargin = (baseCharge) => {
-          let margin = 1.25;
-          const stripeFee = (baseCharge + margin) * 0.029 + 0.30; // Stripe fee calculation
-          return baseCharge + margin + stripeFee; // Add profit margin and Stripe fees
-        };
-      
         // Update the rates with calculated margins
         setRate1(calculateRateWithMargin(sortedRates[0].rates_in_origin_currency.total_charge));
         setUrl1(sortedRates[0].courier_service.logo);
@@ -135,6 +130,7 @@ function RateEstimate({
       {/* Render the GetRates component once the data is available */}
       {rate1 && rate2 && rate3 && (
         <GetRates
+          senderCountryCode={senderCountry}
           receiverCountryCode={receiverCountry}
           receiverPostalCode={receiverPostalCode}
           dimensions={dimensions}
