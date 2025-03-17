@@ -1,62 +1,88 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import RateEstimate from './RateEstimate';
 import "../styles/RateEstimateForm.css";
 import getRegionFromPostalCode from '../functions/fetchRegion';
+import { Spinner } from '@chakra-ui/react';
 
-function RateEstimateForm() {
-    const [senderPostalCode, setSenderPostalCode] = useState("");
+function RateEstimateForm(props) {
+    // Sender info
+    const [senderPostalCode, setSenderPostalCode] = useState(props.senderPostalCode);
     const [senderCountryCode, setSenderCountryCode] = useState("");
-    const [receiverPostalCode, setReceiverPostalCode] = useState("");
+    
+    // Receiver info
+    const receiverAddressLine1 = props.receiverAddressLine1 || "";
+    const receiverCity = props.receiverCity || "";
+    const receiverName = props.receiverName || "";
+    const receiverPhoneNumber = props.receiverPhoneNumber || "";
+    const receiverEmail = props.receiverEmail || "";
+    const [receiverPostalCode, setReceiverPostalCode] = useState(props.receiverPostalCode);
     const [receiverCountryCode, setReceiverCountryCode] = useState("");
+    
+    // Parcel info
     const [weight, setWeight] = useState(0);
     const [dimensions, setDimensions] = useState({ length: 0, width: 0, depth: 0 });
-    const [rateEstimateComponent, setRateEstimateComponent] = useState(null); // To hold the component
+    
+    const [rateEstimateComponent, setRateEstimateComponent] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        console.log('senderPostalCode:', props.senderPostalCode);
+        console.log('receiverPostalCode:', props.receiverPostalCode);
+    }, [props.senderPostalCode, props.receiverPostalCode]);
 
     // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
-        //Fetch the province / state of the given postal code and country
-        const senderRegion = await getRegionFromPostalCode(senderPostalCode, senderCountryCode);
-        const receiverRegion = await getRegionFromPostalCode(receiverPostalCode, receiverCountryCode);
+        setLoading(true);
 
-        // Dynamically create the RateEstimate component
         try {
-            setRateEstimateComponent(
-                React.createElement(RateEstimate, {
-                    senderPostalCode,
-                    senderProvince: senderRegion,
-                    senderCountry: senderCountryCode,
-                    receiverPostalCode,
-                    receiverProvince: receiverRegion,
-                    receiverCountry: receiverCountryCode,
-                    weight,
-                    dimensions
-                })
+            const senderRegion = await getRegionFromPostalCode(senderPostalCode, senderCountryCode);
+            const receiverRegion = await getRegionFromPostalCode(receiverPostalCode, receiverCountryCode);
+
+           setRateEstimateComponent(
+                <RateEstimate
+                    senderPostalCode={senderPostalCode}
+                    senderProvince={senderRegion}
+                    senderCountry={senderCountryCode}
+                    receiverAddressLine1={receiverAddressLine1}
+                    receiverCity={receiverCity}
+                    receiverPostalCode={receiverPostalCode}
+                    receiverProvince={receiverRegion}
+                    receiverCountry={receiverCountryCode}
+                    receiverName={receiverName}
+                    receiverPhoneNumber={receiverPhoneNumber}
+                    receiverEmail={receiverEmail}
+                    weight={weight}
+                    dimensions={dimensions}
+                />
             );
+           
         } catch (error) {
-            console.error('Error logging in:', error.response?.data || error.message);
+            console.error('Error:', error.message);
+        } finally {
+            setLoading(false);
         }
     };
-
     return (
         <div className="shipping-form-container">
-            <h2 className="form-title">Shipping Rate Calculator</h2>
-            <form onSubmit={handleSubmit} className="shipping-form">
-                {/* Sender and Receiver Info */}
-                <div className="sender-receiver-container">
-                    <div className="sender-info">
-                        <h3>Sender Information</h3>
-                        <div className="input-group">
-                            <label htmlFor="senderPostalCode">Sender Postal Code</label>
-                            <input
-                                type="text"
-                                id="senderPostalCode"
-                                value={senderPostalCode}
-                                onChange={(e) => setSenderPostalCode(e.target.value)}
-                                placeholder="Enter sender's postal code"
-                            />
-                        </div>
-                        <div className="input-group">
+            {/* Hide form after submission //!rateEstimateComponent && !loading && ( */}
+
+                <form onSubmit={handleSubmit} className="shipping-form">
+                    {/* Sender and Receiver Info */}
+                    <div className="sender-receiver-container">
+                        <div className="sender-info">
+                            <h3>Sender Information</h3>
+                            <div className="input-group">
+                                <label htmlFor="senderPostalCode">Sender Postal Code</label>
+                                <input
+                                    type="text"
+                                    id="senderPostalCode"
+                                    value={senderPostalCode}
+                                    onChange={(e) => setSenderPostalCode(e.target.value)}
+                                    placeholder="Enter sender's postal code"
+                                />
+                            </div>
+                            <div className="input-group">
                                 <label htmlFor="senderCountryCode">Country</label>
                                 <select
                                     id="senderCountryCode"
@@ -87,19 +113,19 @@ function RateEstimateForm() {
                             </div>
                         </div>
 
-                    <div className="receiver-info">
-                        <h3>Receiver Information</h3>
-                        <div className="input-group">
-                            <label htmlFor="receiverPostalCode">Receiver Postal Code</label>
-                            <input
-                                type="text"
-                                id="receiverPostalCode"
-                                value={receiverPostalCode}
-                                onChange={(e) => setReceiverPostalCode(e.target.value)}
-                                placeholder="Enter receiver's postal code"
-                            />
-                        </div>
-                        <div className="input-group">
+                        <div className="receiver-info">
+                            <h3>Receiver Information</h3>
+                            <div className="input-group">
+                                <label htmlFor="receiverPostalCode">Receiver Postal Code</label>
+                                <input
+                                    type="text"
+                                    id="receiverPostalCode"
+                                    value={receiverPostalCode}
+                                    onChange={(e) => setReceiverPostalCode(e.target.value)}
+                                    placeholder="Enter receiver's postal code"
+                                />
+                            </div>
+                            <div className="input-group">
                                 <label htmlFor="receiverCountryCode">Country</label>
                                 <select
                                     id="receiverCountryCode"
@@ -130,49 +156,40 @@ function RateEstimateForm() {
                             </div>
                         </div>
                     </div>
-                {/* Weight and Dimensions Input */}
-                <div className="input-group">
-                    <label htmlFor="weight">Weight (kg)</label>
-                    <input
-                        type="number"
-                        id="weight"
-                        value={weight}
-                        onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
-                        placeholder="Enter weight in kg"
-                    />
-                </div>
 
-                <div className="input-group">
-                    <label>Dimensions (cm)</label>
-                    <div className="dimensions-inputs">
+                    {/* Weight and Dimensions Input */}
+                    <div className="input-group">
+                        <label htmlFor="weight">Weight (kg)</label>
                         <input
                             type="number"
-                            placeholder="Length"
-                            value={dimensions.length}
-                            onChange={(e) => setDimensions({ ...dimensions, length: parseFloat(e.target.value) || 0 })}
-                        />
-                        <input
-                            type="number"
-                            placeholder="Width"
-                            value={dimensions.width}
-                            onChange={(e) => setDimensions({ ...dimensions, width: parseFloat(e.target.value) || 0 })}
-                        />
-                        <input
-                            type="number"
-                            placeholder="Height"
-                            value={dimensions.depth}
-                            onChange={(e) => setDimensions({ ...dimensions, depth: parseFloat(e.target.value) || 0 })}
+                            id="weight"
+                            value={weight}
+                            onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
+                            placeholder="Enter weight in kg"
                         />
                     </div>
-                </div>
 
-                <button type="submit" className="submit-btn">Get Rate</button>
-            </form>
+                    <div className="input-group">
+                        <label>Dimensions (cm)</label>
+                        <div className="dimensions-inputs">
+                            <input type="number" placeholder="Length" value={dimensions.length} onChange={(e) => setDimensions({ ...dimensions, length: parseFloat(e.target.value) || 0 })} />
+                            <input type="number" placeholder="Width" value={dimensions.width} onChange={(e) => setDimensions({ ...dimensions, width: parseFloat(e.target.value) || 0 })} />
+                            <input type="number" placeholder="Height" value={dimensions.depth} onChange={(e) => setDimensions({ ...dimensions, depth: parseFloat(e.target.value) || 0 })} />
+                        </div>
+                    </div>
+
+                    <button type="submit" className="submit-btn">Get Rate</button>
+                </form>
+            
+
+            {/* Show loading spinner */}
+            {loading && <Spinner size="xl" color="teal.500" />}
             {rateEstimateComponent}
         </div>
     );
 }
 
 export default RateEstimateForm;
+
 
 

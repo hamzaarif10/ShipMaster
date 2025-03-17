@@ -2,12 +2,14 @@ const express = require('express');
 const { getPool } = require('../db');
 const sql = require('mssql');
 const authenticateToken = require('../middleware/authenticateToken');
+const axios = require('axios');
 const router = express.Router();
 //Submit label to database route
 router.post('/submitLabel', authenticateToken, async (req, res) => {
   const {easyship_shipment_id, recipientName, recipientAddress, courierName, courierServiceId, trackingNumber, pdf_url} = req.body;
   const userId = req.user.id;
   try{
+      console.log("recipient address: " + recipientAddress);
       const pool = getPool();
       await pool.request()
        .input('user_id', sql.Int, userId)
@@ -131,7 +133,7 @@ router.get("/getShippingLabels", authenticateToken, async (req, res) => {
 
     const result = await pool.request()
       .input('user_id', sql.Int, userId)
-      .query('SELECT easyship_shipment_ids, recipient_name, recipient_address, courier_name, courier_service_id, tracking_number, pdf_url FROM Labels WHERE user_id = @user_id');
+      .query('SELECT easyship_shipment_ids, recipient_name, recipient_address, courier_name, courier_service_id, tracking_number, pdf_url, status FROM Labels WHERE user_id = @user_id');
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: "labels not found." });
     }
@@ -161,4 +163,42 @@ router.get("/getAccountDetails", authenticateToken, async (req, res) => {
     res.status(500).json({ message: "Failed to fetch account details.", error: error.message });
   }
 });
+//HAndle shipment cancellation
+router.post('/cancelShipment', authenticateToken, async (req, res) => {
+  const { easyship_shipment_id } = req.body;
+  const userId = req.user.id;
+
+     if (!easyship_shipment_id) {
+       return res.status(400).json({ error: 'Missing shipment ID' });
+     }
+  try { 
+    const url = `https://public-api.easyship.com/2024-09/shipments/${easyship_shipment_id}/cancel`;
+    const response = await axios.post(url, {}, { 
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        authorization: 'Bearer prod_webN4zgI8huDvbnChzuu8PdPTFFIHB/Lw5vYxymHLzo='
+      }
+    });
+    //Update shipment status in Label DB table
+      const pool = getPool();
+      await pool.request()
+        .input('easyship_shipment_ids', sql.NVarChar(255), easyship_shipment_id)
+        .input('user_id', sql.Int, userId)
+        .query(`
+          UPDATE Labels
+          SET 
+              status = 'cancelled'
+          WHERE easyship_shipment_ids = @easyship_shipment_ids
+          AND user_id = @user_id
+        `);
+      // Send a success response after both operations succeed
+    res.status(200).json({ message: 'Shipment canceled and status updated successfully!' });
+  }catch(error){
+    console.error('Error processing cancellation:', error);
+    // Catch errors from both API request and database update
+    res.status(500).json({ error: 'Failed to cancel shipment or update shipment status' });
+  }
+});
+
 module.exports = router;

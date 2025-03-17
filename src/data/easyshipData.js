@@ -56,8 +56,8 @@ export const getEasyshipCreateShipmentData = ({
         weight: "kg",
         dimensions: "cm",
       },
-      buy_label: false,
-      buy_label_synchronous: false,
+      buy_label: true,
+      buy_label_synchronous: true,
       printing_options: {
         format: "pdf",
         label: "4x6",

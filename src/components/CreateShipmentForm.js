@@ -4,19 +4,22 @@ import axios from 'axios';
 import ShipmentDetailsModal from '../modals/ShipmentDetailsModal';
 import UserAddressModal from '../modals/UserAddressModal';
 import AddPaymentMethodModal from '../modals/AddPaymentMethodModal';
-import { getEasyshipCreateShipmentData, getEasyshipRateEstimateData } from '../data/easyshipData';
+import { getEasyshipCreateShipmentData } from '../data/easyshipData';
 import { getGlsCreateShipmentData } from '../data/glsData';
 import { canadianProvinces, usStates, ukCountries, australianStates, newZealandRegions, germanStates, frenchRegions, 
   italianRegions, spanishAutonomousCommunities, swedishCounties, norwegianCounties,  
   danishRegions, finnishRegions, swissCantons, japanesePrefectures, singaporeRegions} from '../data/locationData';
-import { Button, useDisclosure, Spinner } from '@chakra-ui/react'; 
+import { Button, useDisclosure, Spinner, Input } from '@chakra-ui/react'; 
 import loadGoogleMapsAPI from "../functions/loadGoogleMapsApi";
 import initAutocomplete from "../functions/initAutoComplete";
-import { fetchFinalPrice } from '../functions/fetchFinalEasyShipPrice';
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
+import { authorizePayment, capturePayment, voidPayment } from '../functions/payment';
+import { generatePdfLink, submitLabel } from '../functions/generateLabel';
+import { fetchUserAddress } from '../functions/fetchUserAddress';
 
-function CreateShipmentForm({courierId, courierUrl, courierCost, senderCountry, receiverCountry, receiverPostCode, measurements, mass}) {
+function CreateShipmentForm({courierId, courierUrl, courierCost, senderCountry, receiverAddressLine1Prop, receiverCityProp, 
+  receiverCountry, receiverPostCode, receiverName, receiverPhoneNumber, receiverEmailProp, measurements, mass}) {
   const [senderAddressLine1, setSenderAddressLine1] = useState("");
   const [senderProvince, setSenderProvince] = useState("");
   const [senderCity, setSenderCity] = useState("");
@@ -25,29 +28,24 @@ function CreateShipmentForm({courierId, courierUrl, courierCost, senderCountry, 
   const [senderContactName, setSenderContactName] = useState("");
   const [senderPhone, setSenderPhone] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
-  const [receiverAddressLine1, setReceiverAddressLine1] = useState("");
+  const [receiverAddressLine1, setReceiverAddressLine1] = useState(receiverAddressLine1Prop);
   const [receiverProvince, setReceiverProvince] = useState("");
-  const [receiverCity, setReceiverCity] = useState("");
+  const [receiverCity, setReceiverCity] = useState(receiverCityProp);
   const [receiverPostalCode, setReceiverPostalCode] = useState(receiverPostCode);
-  const [receiverContactName, setReceiverContactName] = useState("");
-  const [receiverPhone, setReceiverPhone] = useState("");
-  const [receiverEmail, setReceiverEmail] = useState("");
+  const [receiverContactName, setReceiverContactName] = useState(receiverName);
+  const [receiverPhone, setReceiverPhone] = useState(receiverPhoneNumber);
+  const [receiverEmail, setReceiverEmail] = useState(receiverEmailProp);
   const [receiverCountryCode, setReceiverCountryCode] = useState(receiverCountry);
   const [weight, setWeight] = useState(mass);
   const [dimensions, setDimensions] = useState({ length: measurements.length, width: measurements.width, depth: measurements.depth });
 
   const [pdfLink, setPdfLink] = useState(null);
   const [shipmentDetails, setShipmentDetails] = useState(null);
-  const [priceDetails, setPriceDetails] = useState(null);
 
   const [userAddressDetails, setUserAddressDetails] = useState(null);
   
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [modalType, setModalType] = useState(null); // To track which modal to open
-  const [isLoading, setIsLoading] = useState(false);
-  const [isProceedButtonVisible, setIsProceedButtonVisible] = useState(true);
-  const [isCreateShipmentButtonVisible, setIsCreateShipmentButtonVisible] = useState(false);
-
 
   // Load Stripe with your publishable key
    const stripePromise = loadStripe("pk_test_51QkCtpDHC1AwffPccIdFZDypLEY0aKWdk6af4qDDlwKALLJIVDuqeUcsXY2LHK5yrUPqu8tfFQPbB3YcRSsq6ONM00t568wLim");
@@ -57,236 +55,52 @@ function CreateShipmentForm({courierId, courierUrl, courierCost, senderCountry, 
     loadGoogleMapsAPI(() => {
       initAutocomplete(setReceiverAddressLine1,setReceiverCity,setReceiverProvince, setReceiverPostalCode, receiverCountry);
     });
+    console.log("receiver address: " + receiverAddressLine1);
   }, []);
   const handleProvinceChange = (e) => {
     setReceiverProvince(e.target.value);
   };
 
-
   const getProvincesOrStates = (countryCode) => {
     const countryMap = {
-      "CA": canadianProvinces,   // Canada
-      "US": usStates,            // United States
-      "GB": ukCountries,         // United Kingdom
-      "AU": australianStates, // Australia
-      "NZ": newZealandRegions,   // New Zealand
-      "DE": germanStates,        // Germany
-      "FR": frenchRegions,       // France
-      "IT": italianRegions,      // Italy
-      "ES": spanishAutonomousCommunities, // Spain
-      "SE": swedishCounties,     // Sweden
-      "NO": norwegianCounties,   // Norway
-      "DK": danishRegions,       // Denmark
-      "FI": finnishRegions,      // Finland
-      "CH": swissCantons,        // Switzerland
-      "JP": japanesePrefectures, // Japan
-      "SG": singaporeRegions     // Singapore
+      "CA": canadianProvinces, "US": usStates, "GB": ukCountries, "AU": australianStates, "NZ": newZealandRegions,   
+      "DE": germanStates, "FR": frenchRegions, "IT": italianRegions, "ES": spanishAutonomousCommunities, 
+      "SE": swedishCounties, "NO": norwegianCounties, "DK": danishRegions, "FI": finnishRegions,"CH": swissCantons,        
+      "JP": japanesePrefectures, "SG": singaporeRegions     
     };
-  
     return countryMap[countryCode] || []; // Return empty array if country code is not found
   };
-  
   // Inside your component
   const provinceOptions = getProvincesOrStates(receiverCountryCode);
-
-
-  // Fetch user address details from db
-async function fetchUserAddress() {
-  const token = localStorage.getItem("authToken");
-  try {
-    const response = await axios.get("http://localhost:3001/user/getUserAddress", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-    });
-    const newAddress = response.data.userAddressDetails;
-    if (JSON.stringify(newAddress) !== JSON.stringify(userAddressDetails)) {
-      setUserAddressDetails(newAddress);
-      setSenderAddressLine1(newAddress.userAddress);
-      setSenderProvince(newAddress.userProvince);
-      setSenderCity(newAddress.userCity);
-      setSenderPostalCode(newAddress.userPostalCode);
-      setSenderCompanyName(newAddress.userCompanyName);
-      setSenderContactName(newAddress.userCompanyName);
-      setSenderPhone(newAddress.userPhone);
-      setSenderEmail(newAddress.email);
-    }
-  } catch (error) {
-    console.error("Error fetching user address:", error);
-  }
-}
-//authorize payment
-const authorizePayment = async (paymentAmount, currency = "cad") => {
-  const token = localStorage.getItem("authToken");
-  try {
-    // Step 1: Authorize payment
-    const response = await axios.post(
-      "http://localhost:3001/payment/authorize",
-      {
-        amount: parseInt(paymentAmount) * 100, // Convert to cents
-        currency // Default currency
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    // Step 2: Return the payment intent ID (or equivalent)
-    const paymentIntentId = response.data.paymentIntentId;
-    console.log("Payment authorized:", paymentIntentId);
-    return { success: true, paymentIntentId }; // Pass the payment intent ID back
-  } catch (error) {
-    console.error("Payment authorization failed:", error.response?.data || error.message);
-    return { success: false, error: error.response?.data || error.message };
-  }
-};
-//Finalize the payment once shipment is created
-const capturePayment = async (paymentIntentId) => {
-  try {
-    const response = await axios.post(
-      "http://localhost:3001/payment/capture",
-      { paymentIntentId }
-    );
-    console.log("Payment captured successfully:", response.data);
-    return true; // Capture was successful
-  } catch (error) {
-    console.error("Failed to capture payment:", error.response?.data || error.message);
-    throw new Error("Payment capture failed");
-  }
-};
-//if shipment creation fails, void the shipment and release the funds
-const voidPayment = async (paymentIntentId) => {
-  try {
-    const response = await axios.post(
-      "http://localhost:3001/payment/void",
-      { paymentIntentId }
-    );
-    console.log("Payment voided successfully:", response.data);
-    return true; // Void was successful
-  } catch (error) {
-    console.error("Failed to void payment:", error.response?.data || error.message);
-    throw new Error("Payment voiding failed");
-  }
-};
-// Submit shipment label details to the database
-async function submitLabel() {
-  const token = localStorage.getItem("authToken");
-  try {
-    await axios.post(
-      "http://localhost:3001/user/submitLabel",
-      {
-        easyship_shipment_id: shipmentDetails.easyship_shipment_id,
-        recipientName: receiverContactName,
-        recipientAddress: `${receiverAddressLine1}, ${receiverCity}, ${receiverPostalCode}, ${receiverCountryCode}`,
-        courierName: shipmentDetails.courierName,
-        courierServiceId: courierId,
-        trackingNumber: shipmentDetails.trackingNumber,
-        pdf_url: pdfLink
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-  } catch (error) {
-    console.error(error.response?.data || error.message);
-    alert("Failed to submit label.");
-  }
-}
-  
-async function generatePdfLink(base64String, tracking, isEasyShipLabel) {
-  try {
-    let blob = null;
-    if (isEasyShipLabel){
-    // Clean up the Base64 string (remove any extra spaces or newlines)
-    const sanitizedBase64String = base64String.trim();
-
-    // Decode Base64 to a byte array
-    const byteCharacters = atob(sanitizedBase64String);
-    const byteNumbers = Array.from(byteCharacters, (char) => char.charCodeAt(0));
-    const byteArray = new Uint8Array(byteNumbers);
-      // Create a Blob from the byte array
-      blob = new Blob([byteArray], { type: "application/pdf" });
-    }else{
-      blob = new Blob([base64String], { type: "application/pdf" });
-    }
-    // Convert Blob to a File (required for some storage APIs)
-    const file = new File([blob], `${tracking}.pdf`, {
-      type: "application/pdf",
-    });
-    // Upload the file to permanent storage (e.g., AWS S3)
-    const permanentUrl = await uploadFileToStorage(file);
-    console.log("PDF URL generated successfully:", permanentUrl);
-
-    // Set the URL in state for immediate use
-    setPdfLink(permanentUrl);
-  } catch (error) {
-    console.error("Error generating PDF link:", error);
-  }
-}
-//upload file to AWS storage
-async function uploadFileToStorage(file) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-    // Send the request using Axios
-    const response = await axios.post("http://localhost:3001/fileUpload/upload", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data", // Ensure content type is set correctly
-      },
-    });
-
-    // Assuming the server responds with the file's permanent URL
-    return response.data.url;
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    throw new Error("File upload failed");
-  }
-}
 //USE EFFECT HOOKS
 useEffect(() => {
-  if (shipmentDetails) {
-    submitLabel();
-  }
-}, [shipmentDetails]);
-
-useEffect(() => {
-  fetchUserAddress();
-}, [userAddressDetails]); // List the dependencies that trigger fetching address when they change.
-
-useEffect(() => {
-  if (receiverAddressLine1 && receiverCity && receiverProvince && receiverPostalCode 
-    && receiverContactName && receiverPhone && receiverEmail && dimensions && weight) {
-      setIsCreateShipmentButtonVisible(false);
-      setIsProceedButtonVisible(true);
-    }
-}, [senderAddressLine1, senderCity, senderProvince, senderPostalCode, 
-  receiverAddressLine1, receiverCity, receiverProvince, receiverPostalCode, 
-  dimensions, weight])
-
-//Function TO FETCH THE LATEST RATE BEFORE CREATING SHIPMENT
-const getNewRate = async (e) => {
-  e.preventDefault();
-  if (receiverAddressLine1 && receiverCity && receiverProvince && receiverPostalCode 
-    && receiverContactName && receiverPhone && receiverEmail && dimensions && weight) {
-      setIsProceedButtonVisible(false);
-      setIsCreateShipmentButtonVisible(true);
-      setIsLoading(true);
-      const easyShipRateEstimateData = getEasyshipRateEstimateData({
-        senderProvince, senderPostalCode, senderCountry,
-        receiverProvince, receiverPostalCode, receiverCountry,
-        dimensions, weight
+  if (modalType === "shipmentDetails" && isOpen) {
+      submitLabel({
+        shipment_id: shipmentDetails.easyship_shipment_id,
+        name: receiverContactName,
+        addressLine1: receiverAddressLine1,
+        city: receiverCity,
+        postalCode: receiverPostalCode,
+        countryCode: receiverCountryCode,
+        courierName: shipmentDetails.courierName,
+        courierId: courierId,
+        trackingNum: shipmentDetails.trackingNumber,
+        pdfLink: pdfLink
       });
-      fetchFinalPrice(courierId, easyShipRateEstimateData, setPriceDetails, setIsLoading);
   }
-}
+}, [modalType, isOpen]);
+
+
+
+useEffect(() => {
+  fetchUserAddress({setUserAddressDetails, setSenderAddressLine1, setSenderProvince,
+    setSenderCity, setSenderPostalCode, setSenderCompanyName, setSenderContactName, setSenderPhone, setSenderEmail});
+}, [userAddressDetails]); // List the dependencies that trigger fetching address when they change.
 
 
 const handleSubmit = async (e) => {
   e.preventDefault();
   setReceiverCountryCode(receiverCountry);
-  setIsLoading(true); // Show loading indicator
   // Check to see if there is a payment method on file, if not open add payment method modal
   try {
     const token = localStorage.getItem("authToken");
@@ -298,14 +112,12 @@ const handleSubmit = async (e) => {
     if (!response.data.doesPaymentMethodExist) {
       setModalType("paymentMethod");
       onOpen();
-      setIsLoading(false);
       return; // Exit the function if stripe_customer_id is null
     }
     // Proceed with further logic if needed
   } catch (error) {
     console.error("Error checking payment method:", error.response?.data || error.message);
   }
-
   //continue with payment
   let paymentId = "";
   try {
@@ -317,7 +129,6 @@ const handleSubmit = async (e) => {
       alert(`Payment authorization failed: ${error}`);
       return;
     }
-
     console.log("Payment authorized successfully:", paymentIntentId);
     paymentId = paymentIntentId; // Assign paymentIntentId here
     if (!paymentId) {
@@ -325,28 +136,49 @@ const handleSubmit = async (e) => {
     }
     // Step 2: Proceed to create the shipment
     setModalType("shipmentDetails");
+    let shipment_id = "";
+    let courierName = "";
+    let trackingNumber = "";
+    let labelBase64 = "";
+    //CORE LOGIC TO CREATE LABEL BASED ON THE COURIER SELECTED 
+    if (courierId == "GlsDicomExpressGround")
+    {
+      const glsShipmentData = getGlsCreateShipmentData({
+        senderAddressLine1, senderProvince, senderCity, senderPostalCode,
+        senderCompanyName, senderContactName, senderPhone, senderEmail,
+        receiverAddressLine1, receiverProvince, receiverCity, receiverPostalCode,
+        receiverContactName, receiverPhone, receiverEmail, receiverCountryCode,
+        dimensions, weight, courierId
+      });
+      const response = await axios.post(
+        "http://localhost:3001/api/get-gls-label",
+        glsShipmentData
+      );
+      shipment_id = response.data.trackingNumber;
+      courierName = courierId;
+      trackingNumber = response.data.carrierTrackingNos[0];
 
-    const easyShipShipmentData = getEasyshipCreateShipmentData({
-      senderAddressLine1, senderProvince, senderCity, senderPostalCode,
-      senderCompanyName, senderContactName, senderPhone, senderEmail,
-      receiverAddressLine1, receiverProvince, receiverCity, receiverPostalCode,
-      receiverContactName, receiverPhone, receiverEmail, receiverCountryCode,
-      dimensions, weight, courierId
-    });
+      
+    }else{
+      const easyShipShipmentData = getEasyshipCreateShipmentData({
+        senderAddressLine1, senderProvince, senderCity, senderPostalCode,
+        senderCompanyName, senderContactName, senderPhone, senderEmail,
+        receiverAddressLine1, receiverProvince, receiverCity, receiverPostalCode,
+        receiverContactName, receiverPhone, receiverEmail, receiverCountryCode,
+        dimensions, weight, courierId
+      });
+      const response = await axios.post(
+        "http://localhost:3001/api/get-easyship-label",
+        easyShipShipmentData
+      );
+      // Extract shipment details
+      shipment_id = response.data.shipment.easyship_shipment_id;
+      courierName = response.data.shipment.courier_service.name;
+      trackingNumber = response.data.shipment.trackings[0].tracking_number;
+      labelBase64 = response.data.shipment.shipping_documents?.[0]?.base64_encoded_strings?.[0];
+    }
 
-    const response = await axios.post(
-      "http://localhost:3001/api/get-easyship-label",
-      easyShipShipmentData
-    );
-
-    // Extract shipment details
-    const easyship_shipment_id = response.data.shipment.easyship_shipment_id;
-    const courierName = response.data.shipment.courier_service.name;
-    const trackingNumber = response.data.shipment.trackings[0].tracking_number;
-    const labelBase64 =
-      response.data.shipment.shipping_documents?.[0]?.base64_encoded_strings?.[0];
-
-    if (labelBase64 && trackingNumber) {
+    if (trackingNumber) {
       // Step 3: Capture the payment
       const isCaptured = await capturePayment(paymentId);
 
@@ -355,15 +187,28 @@ const handleSubmit = async (e) => {
         return;
       }
       console.log("Payment captured successfully");
-
-      // Generate the PDF label
-      await generatePdfLink(labelBase64, trackingNumber, true);
+      
+      if (courierId == "GlsDicomExpressGround"){
+        try {
+          const response = await axios.get("http://localhost:3001/api/download-gls-label", {
+            params: { shipment_id, documentSize: 'Thermal'}
+          });
+          console.log("label urL: " + response.data);
+          await generatePdfLink(response.data.base64String, trackingNumber, setPdfLink);
+        } catch (error) {
+          console.error("Error fetching GLS label:", error);
+        }
+      }else{
+        // Generate the PDF label
+        await generatePdfLink(labelBase64, trackingNumber, setPdfLink);
+      }
       // Set shipment details for the modal
       setShipmentDetails({
-        easyship_shipment_id: easyship_shipment_id,
+        easyship_shipment_id: shipment_id,
         courierName: courierName,
         trackingNumber: trackingNumber,
       });
+      console.log("recipient name: " + receiverContactName);
       // Open the modal
       onOpen();
     } else {
@@ -382,9 +227,7 @@ const handleSubmit = async (e) => {
       }
     }
     alert("Failed to create shipment.");
-  } finally {
-    setIsLoading(false); // Hide loading indicator
-  }
+  } 
 };
     return (
                <div className="shipping-form-container">
@@ -424,7 +267,8 @@ const handleSubmit = async (e) => {
                           onOpen={onOpen} 
                           onClose={() => {
                             onClose();
-                            fetchUserAddress(); // Fetch updated address when modal closes
+                            fetchUserAddress({setUserAddressDetails, setSenderAddressLine1, setSenderProvince,
+                              setSenderCity, setSenderPostalCode, setSenderCompanyName, setSenderContactName, setSenderPhone, setSenderEmail}); // Fetch updated address when modal closes
                             setModalType(null); // Reset modalType when modal closes
                           }}  
                         />
@@ -473,7 +317,10 @@ const handleSubmit = async (e) => {
             type="text"
             id="receiverPostalCode"
             value={receiverPostalCode}
-            onChange={(e) => setReceiverPostalCode(e.target.value)}
+            style={{
+              backgroundColor: 'lightgray', // Light gray background
+            }}
+            readOnly
           />
         </div>
                     </div>
@@ -508,7 +355,10 @@ const handleSubmit = async (e) => {
                     <input type="number"
                         id="weight"
                         value={weight}
-                        onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
+                        readOnly
+                        style={{
+                          backgroundColor: 'lightgray', // Light gray background
+                        }}
                         placeholder="Enter weight in kg"/>
                 </div>
                     </div>
@@ -520,45 +370,37 @@ const handleSubmit = async (e) => {
                         <input type="number"
                             placeholder="Length"
                             value={dimensions.length}
+                            readOnly
+                            style={{
+                              backgroundColor: 'lightgray', // Light gray background
+                            }}
                             onChange={(e) => setDimensions({ ...dimensions, length: parseFloat(e.target.value) || 0 })}/>
                         <input type="number"
                             placeholder="Width"
                             value={dimensions.width}
+                            readOnly
+                            style={{
+                              backgroundColor: 'lightgray', // Light gray background
+                            }}
                             onChange={(e) => setDimensions({ ...dimensions, width: parseFloat(e.target.value) || 0 })}/>
                         <input type="number"
                             placeholder="Height"
                             value={dimensions.depth}
+                            readOnly
+                            style={{
+                              backgroundColor: 'lightgray', // Light gray background
+                            }}
                             onChange={(e) => setDimensions({ ...dimensions, depth: parseFloat(e.target.value) || 0 })}/>
                     </div>
                 </div>
-                {/* proceed button once all fields are filled out */}
-                {isProceedButtonVisible && (
-                  <button type="button" onClick={getNewRate} className="submit-button">
-                  Proceed
-                 </button>
-                )}
-                {isLoading && (
-                    <div className="spinner-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50px' }}>
-                        <Spinner size="xl" color="blue.500" />
-                    </div>
-                )}
-                {/* Render New updated price once all fields are set */}
-                {priceDetails && isCreateShipmentButtonVisible && !isLoading &&(
-                  <div>
-                    <div className="updated-price-container">
-                      <h3 className="updated-price">
-                        <span className="price-value">
-                          <img src={priceDetails.newLogo} alt="Logo" className="gls-logo" />
-                          ${priceDetails.newPrice}
-                        </span>
-                      </h3>
-                    </div>
-                    <button type="submit" disabled={isLoading} className="submit-button">
-                    {isLoading ? "Processing..." : "Create Shipment"}
+                
+                 
+                    <button type="submit" className="submit-button">
+                    Create Shipment
                   </button>
   
-                  </div>
-                  )}
+                 
+   
             </form>
             {/* Render ShipmentDetailsModal only if pdfLink and shipmentDetails are set */}
         {shipmentDetails && modalType === 'shipmentDetails' &&(

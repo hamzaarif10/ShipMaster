@@ -93,42 +93,47 @@ function ViewLabels() {
     setSelectedLabel(label); // Store the label info for cancel
     onCancelOpen();
   }
-
   const handleConfirmCancel = async () => {
-    // Send cancel request to the server
+    const token = localStorage.getItem("authToken");
+    setIsLoading(true); // Start spinner
+
     try {
-      const response = await axios.post(
-        "http://localhost:3001/user/cancelShipment",
-        { shipmentId: selectedLabel.id },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      if (response.status === 200) {
-        toast({
-          title: "Shipment Cancelled.",
-          description: "The shipment has been successfully cancelled.",
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        });
-        onCancelClose();
-        setShippingLabels((prev) =>
-          prev.filter((label) => label.id !== selectedLabel.id)
+        const response = await axios.post(
+            'http://localhost:3001/user/cancelShipment',
+            { easyship_shipment_id: selectedLabel.easyship_shipment_ids }, // Send in body
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
         );
-      }
+
+        // If successful show success message
+        if (response.status === 200) {
+            toast({
+                title: "Shipment Cancelled",
+                description: "The shipment has been successfully cancelled.",
+                status: "success",
+                duration: 5000,
+                isClosable: true,
+            });
+
+            onCancelClose(); // Close modal
+        }
     } catch (error) {
-      toast({
-        title: "Error.",
-        description: "There was an error canceling the shipment.",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+        console.error('Error cancelling shipment:', error.response?.data || error.message);
+
+        toast({
+            title: "Error Cancelling Shipment",
+            description: "Failed to cancel the shipment. Please try again.",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+        });
+    } finally {
+        setIsLoading(false); // Stop spinner
     }
-  };
+};
 
   return (
     <Box
@@ -211,67 +216,86 @@ function ViewLabels() {
                     <Td>{label.courier_name}</Td>
                     <Td>{label.tracking_number}</Td>
                     <Td>
+                  {label.status === 'cancelled' ? (
+                      <Text color="red.500" fontWeight="bold">Shipment Cancelled</Text>
+                  ) : (
                       <Flex gap={4}>
-                        <Button
-                          flex="1"
-                          size="md"
-                          leftIcon={<FiEye />}
-                          colorScheme="blue"
-                          onClick={() => handleDetailsClick(label)}
-                          _hover={{
-                            boxShadow: "0px 4px 12px rgba(0, 0, 255, 0.4)",
-                            transform: "scale(1.05)",
-                          }}
-                          transition="all 0.2s ease-in-out"
-                        >
-                          View Details
-                        </Button>
-                        <Button
-                          flex="1"
-                          size="md"
-                          colorScheme="orange"
-                          onClick={() => handlePickupClick(label)}
-                          _hover={{
-                            boxShadow: "0px 4px 12px rgba(255, 165, 0, 0.4)",
-                            transform: "scale(1.05)",
-                          }}
-                          transition="all 0.2s ease-in-out"
-                        >
-                          Schedule Pickup
-                        </Button>
-                        <Menu>
-                            <MenuButton
-                              as={IconButton}
-                              aria-label="Options"
-                              icon={<HiDotsVertical />}
-                              variant="outline"
-                              size="sm"
-                              colorScheme="gray"
-                              zIndex="10" // Ensure the button itself has a z-index
-                            />
-                            <MenuList
-                              zIndex="20" // Set a higher z-index for the menu list to appear above other elements
-                              position="absolute" // Ensure the menu appears relative to its button
-                            >
-                              <MenuItem onClick={() => handleDetailsClick(selectedLabel)}>
-                                View Details
-                              </MenuItem>
-                              <MenuItem onClick={() => onCancelOpen()}>
-                                Cancel
-                              </MenuItem>
-                            </MenuList>
-                          </Menu>
+                          <Button
+                              flex="1"
+                              size="md"
+                              leftIcon={<FiEye />}
+                              colorScheme="blue"
+                              onClick={() => handleDetailsClick(label)}
+                              _hover={{
+                                  boxShadow: "0px 4px 12px rgba(0, 0, 255, 0.4)",
+                                  transform: "scale(1.05)",
+                              }}
+                              transition="all 0.2s ease-in-out"
+                          >
+                              View Details
+                          </Button>
 
+                          <Button
+                              flex="1"
+                              size="md"
+                              colorScheme="orange"
+                              onClick={() => handlePickupClick(label)}
+                              _hover={{
+                                  boxShadow: "0px 4px 12px rgba(255, 165, 0, 0.4)",
+                                  transform: "scale(1.05)",
+                              }}
+                              transition="all 0.2s ease-in-out"
+                          >
+                              Schedule Pickup
+                          </Button>
 
+                          <Button
+                              flex="1"
+                              size="md"
+                              colorScheme="red"
+                              leftIcon={<MdClose />}
+                              onClick={() => handleCancelShipment(label)}
+                              _hover={{
+                                  boxShadow: "0px 4px 12px rgba(255, 0, 0, 0.4)",
+                                  transform: "scale(1.05)",
+                              }}
+                              transition="all 0.2s ease-in-out"
+                          >
+                              Cancel
+                          </Button>
+
+                          <AlertDialog isOpen={isCancelOpen} leastDestructiveRef={cancelRef} onClose={onCancelClose}>
+                              <AlertDialogOverlay>
+                                  <AlertDialogContent>
+                                      <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                                          Cancel Shipment
+                                      </AlertDialogHeader>
+
+                                      <AlertDialogBody>
+                                          Are you sure you want to cancel this shipment?
+                                          Refunds will be processed within 10 business days.
+                                      </AlertDialogBody>
+
+                                      <AlertDialogFooter>
+                                          <ChakraButton ref={cancelRef} onClick={onCancelClose}>
+                                              Cancel
+                                          </ChakraButton>
+                                          <ChakraButton colorScheme="red" onClick={handleConfirmCancel} ml={3}>
+                                              Confirm
+                                          </ChakraButton>
+                                      </AlertDialogFooter>
+                                  </AlertDialogContent>
+                              </AlertDialogOverlay>
+                          </AlertDialog>
                       </Flex>
-                    </Td>
+                  )}
+              </Td>
                   </Tr>
                 ))}
               </Tbody>
             </Table>
           </Box>
         )}
-
         {/* Shipment Details Modal */}
         {selectedLabel && (
           <ShipmentDetailsModal
@@ -284,7 +308,6 @@ function ViewLabels() {
             onClose={onDetailsClose}
           />
         )}
-
         {/* Schedule Pickup Modal */}
         {selectedLabel && (
           <SchedulePickupModal
@@ -294,38 +317,6 @@ function ViewLabels() {
             onClose={onPickupClose}
           />
         )}
-
-        {/* Cancel Shipment Confirmation Dialog */}
-        <AlertDialog
-  isOpen={isCancelOpen}
-  leastDestructiveRef={cancelRef}
-  onClose={onCancelClose}
->
-  <AlertDialogOverlay
-    zIndex={1000} // Ensure it's on top of other elements
-  >
-    <AlertDialogContent>
-      <AlertDialogHeader fontSize="lg" fontWeight="bold">
-        Cancel Shipment
-      </AlertDialogHeader>
-
-      <AlertDialogBody>
-        Are you sure you want to cancel this shipment? This action cannot be undone.
-      </AlertDialogBody>
-
-      <AlertDialogFooter>
-        <ChakraButton ref={cancelRef} onClick={onCancelClose}>
-          Cancel
-        </ChakraButton>
-        <ChakraButton colorScheme="red" onClick={handleConfirmCancel} ml={3}>
-          Confirm
-        </ChakraButton>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialogOverlay>
-</AlertDialog>
-
-
       </Box>
     </Box>
   );

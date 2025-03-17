@@ -1,3 +1,4 @@
+import getProvinceCode from "../functions/getProvinceCode"
 export const getGlsCreateShipmentData = ({
     senderAddressLine1,
     senderProvince,
@@ -16,59 +17,84 @@ export const getGlsCreateShipmentData = ({
     receiverEmail,
     receiverCountryCode,
     dimensions,
-    weight
+    weight,
+    courierId
   }) => ({
-    "deliveryType": "GRD",
-    "category": "Parcel",
-    "paymentType": "Prepaid",
-    "billingAccount": "575623",
-    "sender": {
-      "addressLine1": senderAddressLine1,
-      "addressLine2": "",
-      "city": senderCity,
-      "provinceCode": senderProvince,
-      "postalCode": senderPostalCode,
+    "selectedService": courierId,
+    "fromAddress": {
+      "company": senderCompanyName,
+      "contact": senderContactName,
+      "phone": senderPhone,
+      "addr1": senderAddressLine1,
+      "addr2": "",
+      "addr3": "",
       "countryCode": "CA",
-      "customerName": senderCompanyName,
-      "contact": {
-        "fullName": senderContactName,
-        "language": "en",
-        "email": senderEmail,
-        "department": "",
-        "telephone": senderPhone,
-        "extension": "1"
-      }
+      "postalCode": senderPostalCode,
+      "city": senderCity,
+      "province": getProvinceCode(senderProvince),
+      "residential": true,
+      "emails": [
+        senderEmail
+      ],
+      "isInside": false,
+      "isTailGate": false,
+      "isTradeShow": false,
+      "isLimitedAccess": false,
+      "isSaturday": false,
+      "isStopinOnly": false
     },
-    "consignee": {
-      "addressLine1": receiverAddressLine1,
-      "addressLine2": "",
-      "suite": "",
-      "city": receiverCity,
-      "provinceCode": receiverProvince,
-      "postalCode": receiverPostalCode,
+    "toAddress": {
+      "company": receiverContactName,
+      "contact": receiverContactName,
+      "phone": receiverPhone,
+      "addr1": receiverAddressLine1,
+      "addr2": "",
+      "addr3": "",
       "countryCode": receiverCountryCode,
-      "customerName": receiverContactName,
-      "contact": {
-        "fullName": receiverContactName,
-        "language": "en",
-        "email": receiverEmail,
-        "department": "",
-        "telephone": receiverPhone,
-        "extension": "1"
-      }
+      "postalCode": receiverPostalCode,
+      "city": receiverCity,
+      "province": getProvinceCode(receiverProvince),
+      "residential": true,
+      "emails": [
+        receiverEmail
+      ],
+      "isInside": false,
+      "isTailGate": false,
+      "isTradeShow": false,
+      "isLimitedAccess": false,
+      "isSaturday": false,
+      "isStopinOnly": false
     },
-    "unitOfMeasurement": "KC",
-    "parcels": [
+    "packages": [
       {
-        "parcelType": "Box",
-        "quantity": "1",
+        "packageType": "MyPackage",
+        "userDefinedPackageType": "",
         "weight": weight,
+        "weightUnits": "Kgs",
         "length": dimensions.length,
-        "depth": dimensions.depth,
         "width": dimensions.width,
-        "status": 0,
-        "groupId": 0,
-        "requestReturnLabel": false
+        "height": dimensions.depth,
+        "dimUnits": "CM",
+        "insurance": 0,
+        "isAdditionalHandling": false,
+        "signatureOptions": "None",
+        "description": "",
+        "temperatureProtection": false,
+        "isDangerousGoods": false,
+        "isNonStackable": false
       }
-    ]
+    ],
+    "shipDateTime": "2023-09-01T12:00:00Z",
+    "deliveryEmails": [
+      receiverEmail
+    ],
+    "billingOption": "Prepaid",
+    "billingAccountNumber": "126645",
+    "documentsOnly": false,
+    "isNonStackable": false,
+    "references": [],
+    "comments": "",
+    "clearInProgress": true,
+    "editTrackingNumber": "",
+    "returnSampleLabelOnly": true
   });

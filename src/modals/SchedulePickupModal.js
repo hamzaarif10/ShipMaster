@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from 'axios';
 import Swal from "sweetalert2";
 import {
@@ -12,25 +12,50 @@ import {
   Button,
   FormControl,
   FormLabel,
-  Input,
 } from "@chakra-ui/react";
 
 function SchedulePickupModal({ easyshipShipmentId, courierId, isOpen, onClose }) {
   const [pickupDate, setPickupDate] = useState("");
-  const [fromTime, setFromTime] = useState("");
-  const [toTime, setToTime] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
+  const [formattedPickupTimes, setFormattedPickupTimes] = useState([]);
+  const [pickupSlotId, setPickupSlotId] = useState("");
+
+  const getPickupTime = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/pickups/get-time-slots', {
+        params: { courier_service_id: courierId }
+      });
+
+      // Extract and format the time slots as "from_time - to_time"
+      const pickupSlots = response.data.courier_service_handover_option.pickup_slots;
+
+      // Filter and map the pickup slots to format them
+      const formattedTimes = pickupSlots.filter(slot => slot.time_slots.length > 0) // Only slots with time
+        .map(slot => ({
+          date: slot.date,
+          time: slot.time_slots.map(timeSlot => `${timeSlot.from_time} - ${timeSlot.to_time}`).join(', '),
+          time_slot_ids: slot.time_slots.map(timeSlot => timeSlot.time_slot_id) // Store time_slot_ids
+        }));
+
+      setFormattedPickupTimes(formattedTimes);
+
+    } catch (error) {
+      console.error('Error fetching pickup slots:', error.response?.data || error.message);
+    }
+  };
+
+  useEffect(() => {
+    getPickupTime();
+  }, [courierId]);
 
   const handleSchedule = async () => {
-
     const pickupData = {
       courier_service_id: courierId,
+      time_slot_id: pickupSlotId,
       selected_date: pickupDate,
-      selected_from_time: fromTime,
-      selected_to_time: toTime,
       easyship_shipment_ids: [easyshipShipmentId]
-    }
-    // Add logic here to handle the scheduling, such as sending data to an API
-    // Make the Axios post request sending over the data to schedule pickup
+    };
+
     try {
       await axios.post(
         "http://localhost:3001/pickups/schedule-easyship-pickup",
@@ -50,7 +75,7 @@ function SchedulePickupModal({ easyshipShipmentId, courierId, isOpen, onClose })
         confirmButtonText: "OK",
       });
     }
-      onClose();
+    onClose();
   };
 
   return (
@@ -60,30 +85,36 @@ function SchedulePickupModal({ easyshipShipmentId, courierId, isOpen, onClose })
         <ModalHeader>Schedule Pickup</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <FormControl isRequired>
-            <FormLabel>Date</FormLabel>
-            <Input
-              type="date"
-              value={pickupDate}
-              onChange={(e) => setPickupDate(e.target.value)}
-            />
-          </FormControl>
+          <FormControl isRequired mt={4}>
+            <FormLabel>Pick up Time:</FormLabel>
+            <select
+              id="pickupTime"
+              value={pickupTime}
+              onChange={(e) => {
+                const selectedTime = e.target.value;
+                setPickupTime(selectedTime);
 
-          <FormControl isRequired mt={4}>
-            <FormLabel>From Time</FormLabel>
-            <Input
-              type="time"
-              value={fromTime}
-              onChange={(e) => setFromTime(e.target.value)}
-            />
-          </FormControl>
-          <FormControl isRequired mt={4}>
-            <FormLabel>To Time</FormLabel>
-            <Input
-              type="time"
-              value={toTime}
-              onChange={(e) => setToTime(e.target.value)}
-            />
+                // Set pickupSlotId when time is selected
+                const [date, time] = selectedTime.split(": ");
+                const selectedSlot = formattedPickupTimes.find(slot => slot.date === date);
+                const selectedTimeSlotId = selectedSlot?.time_slot_ids.find((id, idx) => {
+                  return `${date}: ${selectedSlot.time.split(', ')[idx]}` === selectedTime;
+                });
+                setPickupSlotId(selectedTimeSlotId);
+                setPickupDate(date);
+              }}
+            >
+              <option value="">Select a time</option>
+              {formattedPickupTimes.map((slot, index) => (
+                <optgroup key={index} label={slot.date}>
+                  {slot.time.split(', ').map((time, idx) => (
+                    <option key={idx} value={`${slot.date}: ${time}`}> {/* Set the full formatted value */}
+                      {`${slot.date}: ${time}`}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </FormControl>
         </ModalBody>
 
@@ -99,3 +130,4 @@ function SchedulePickupModal({ easyshipShipmentId, courierId, isOpen, onClose })
 }
 
 export default SchedulePickupModal;
+

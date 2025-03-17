@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Button, VStack, Text, Icon } from '@chakra-ui/react';
-import { FaRegClipboard, FaShippingFast, FaBox, FaUserCog, FaSignOutAlt, FaCreditCard } from 'react-icons/fa'; // Updated icons
+import { FaRegClipboard, FaShippingFast, FaBox, FaUserCog, FaSignOutAlt, FaCreditCard, FaPlug } from 'react-icons/fa'; // Updated icons
 import { useNavigate } from 'react-router-dom';
 
 const SideBar = () => {
@@ -24,8 +24,9 @@ const SideBar = () => {
     { id: 1, label: 'Quick Rate', icon: FaRegClipboard, route: '/account-home'},
     { id: 2, label: 'Create Shipment', icon: FaShippingFast, route: '/create-shipment' },
     { id: 3, label: 'View Shipments', icon: FaBox, route: '/view-labels' },
-    { id: 4, label: 'Account', icon: FaUserCog, route: '/account' },
-    { id: 5, label: 'Billing', icon: FaCreditCard, route: '/billing' }
+    { id: 4, label: 'Integrations', icon: FaPlug, route: '/integration' },
+    { id: 5, label: 'Account', icon: FaUserCog, route: '/account' },
+    { id: 6, label: 'Billing', icon: FaCreditCard, route: '/billing' }
   ];
 
   return (

@@ -21,4 +21,28 @@ router.post('/schedule-easyship-pickup', async (req, res) => {
   }
 });
 
+//Retrieve pickup time slots
+router.get('/get-time-slots', async (req, res) => {
+  try {
+     const { courier_service_id } = req.query; 
+
+     if (!courier_service_id) {
+       return res.status(400).json({ error: 'Missing courier_service_id' });
+     }
+     
+    const url = `https://public-api.easyship.com/2024-09/courier_services/${courier_service_id}/pickup_slots`;
+    const response = await axios.get(url, {
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        authorization: 'Bearer prod_webN4zgI8huDvbnChzuu8PdPTFFIHB/Lw5vYxymHLzo='
+      }
+    });
+    res.json(response.data);
+  }catch(error){
+    console.error('Could not retrieve pickup times:', error);
+    res.status(500).json({ error: 'Failed to retrieve pickup times' });
+  }
+});
+
 module.exports = router;

@@ -17,6 +17,7 @@ import CreateShipment from './pages/CreateShipment.js';
 import ShipmentDetailsModal from './modals/ShipmentDetailsModal.js';
 import ViewLabels from "./pages/ViewLabels.js"
 import AccountDetails from './pages/AccountDetails.js';
+import Integrations from './pages/Integrations.js';
 import AddPaymentMethod from "./pages/AddPaymentMethod.js";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
@@ -46,6 +47,7 @@ function App() {
         <Route path="/account-home" element={<ProtectedRoute><DashboardNav/><AccountHome /></ProtectedRoute>} />
         <Route path="/create-shipment" element={<ProtectedRoute><DashboardNav/><CreateShipment/><ShipmentDetailsModal/></ProtectedRoute>} />
         <Route path="/view-labels" element={<ProtectedRoute><DashboardNav/><ViewLabels /></ProtectedRoute>} />
+        <Route path="/integration" element={<ProtectedRoute><DashboardNav/><Integrations /></ProtectedRoute>} />
         <Route path="/account" element={<ProtectedRoute><DashboardNav/><AccountDetails /></ProtectedRoute>} />
         <Route path="/billing" element={<ProtectedRoute><DashboardNav/><Elements stripe={stripePromise}><AddPaymentMethod /></Elements></ProtectedRoute>} />
       </Routes>
